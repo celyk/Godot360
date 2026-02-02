@@ -265,27 +265,40 @@ int get_face(vec3 dir) {
 	return -1;
 }
 
-mat3 get_tangent_basis(int face) {
+mat3 get_face_tangent_basis(int face) {
 	mat3 tbn = mat3(1);
 	
 	switch(face){
 		case FRONT:
-			tbn[0] = vec3(0);
+			tbn[0] = vec3(1,0,0);
+			tbn[1] = vec3(0,1,0);
+			tbn[2] = cross(tbn[0], tbn[1]);
 			//return vec2(fov_fix * 0.5 * (vec2(dir.x / az, dir.y / az)) + 0.5)
 		case BACK: 
-			tbn[0] = vec3(0);
+			tbn[0] = vec3(1,0,0);
+			tbn[1] = vec3(0,1,0);
+			tbn[2] = cross(tbn[0], tbn[1]);
 			//return vec2(fov_fix * 0.5 * (vec2(-dir.x / az, dir.y / az)) + 0.5)
 		case LEFT: 
-			tbn[0] = vec3(0);
+			tbn[0] = vec3(1,0,0);
+			tbn[1] = vec3(0,1,0);
+			tbn[2] = cross(tbn[0], tbn[1]);
 			//return vec2(fov_fix * 0.5 * (vec2(-dir.z / ax, dir.y / ax)) + 0.5)
 		case RIGHT: 
-			tbn[0] = vec3(0);
+			tbn[0] = vec3(1,0,0);
+			tbn[1] = vec3(0,1,0);
+			tbn[2] = cross(tbn[0], tbn[1]);
 			//return vec2(fov_fix * 0.5 * (vec2(dir.z / ax, dir.y / ax)) + 0.5)
 		case BOTTOM: 
-			tbn[0] = vec3(0);
+			tbn[0] = vec3(1,0,0);
+			tbn[1] = vec3(0,1,0);
+			tbn[2] = cross(tbn[0], tbn[1]);
 			//return vec2(fov_fix * 0.5 * (vec2(dir.x / ay, dir.z / ay)) + 0.5);
 		case TOP: 
-			tbn[0] = vec3(0);//return vec2(fov_fix * 0.5 * (vec2(dir.x / ay, -dir.z / ay)) + 0.5);
+			tbn[0] = vec3(1,0,0);
+			tbn[1] = vec3(0,1,0);
+			tbn[2] = cross(tbn[0], tbn[1]);
+			//return vec2(fov_fix * 0.5 * (vec2(dir.x / ay, -dir.z / ay)) + 0.5);
 	}
 	
 	return tbn;
@@ -317,41 +330,61 @@ vec2 get_face_uv(vec3 dir, int face) {
 	return vec2(-1);
 }
 
-vec4 sample_cube_face(int face, vec2 uv) {
+vec4 get_face_color(int face) {
 	vec3 color_front = vec3(1.0, 1.0, 1.0);
 	vec3 color_back = vec3(1.0, 1.0, 0.0);
 	vec3 color_left = vec3(1.0, 0.0, 0.0);
 	vec3 color_right = vec3(1.0, 0.2, 0.0);
 	vec3 color_bottom = vec3(0.0, 1.0, 0.0);
 	vec3 color_top = vec3(0.0, 0.0, 1.0);
-	float alpha = 0.3;
+	
+	switch(face){
+		case FRONT:
+			return vec4(color_front, 1.0);
+		case BACK: 
+			return vec4(color_back, 1.0);
+		case LEFT:
+			return vec4(color_left, 1.0);
+		case RIGHT:
+			return vec4(color_right, 1.0);
+		case BOTTOM:
+			return vec4(color_bottom, 1.0);
+		case TOP: 
+			return vec4(color_top, 1.0);
+	}
+	return vec4(0);
+}
+
+vec4 sample_cube_face(int face, vec2 uv) {
+	vec4 face_color = get_face_color(face);
 	vec4 grid_sample = texture(Grid, uv);
+	float grid_alpha = 0.3;
 	
 	switch(face){
 		case FRONT:
 			vec4 face_sample = texture(Texture0, uv);
 			if (!show_grid) return face_sample;
-			return mix(face_sample, face_sample * vec4(color_front, 1.0) * grid_sample, alpha);
+			return mix(face_sample, face_sample * face_color * grid_sample, grid_alpha);
 		case BACK: 
 			vec4 face_sample = texture(Texture5, uv);
 			if (!show_grid) return face_sample;
-			return mix(face_sample, face_sample * vec4(color_back, 1.0) * grid_sample, alpha);
+			return mix(face_sample, face_sample * face_color * grid_sample, grid_alpha);
 		case LEFT:
 			vec4 face_sample = texture(Texture1, uv);
 			if (!show_grid) return face_sample;
-			return mix(face_sample, face_sample * vec4(color_left, 1.0) * grid_sample, alpha);
+			return mix(face_sample, face_sample * face_color * grid_sample, grid_alpha);
 		case RIGHT:
 			vec4 face_sample = texture(Texture2, uv);
 			if (!show_grid) return face_sample;
-			return mix(face_sample, face_sample * vec4(color_right, 1.0) * grid_sample, alpha);
+			return mix(face_sample, face_sample * face_color * grid_sample, grid_alpha);
 		case BOTTOM:
 			vec4 face_sample = texture(Texture3, uv);
 			if (!show_grid) return face_sample;
-			return mix(face_sample, face_sample * vec4(color_bottom, 1.0) * grid_sample, alpha);
+			return mix(face_sample, face_sample * face_color * grid_sample, grid_alpha);
 		case TOP: 
 			vec4 face_sample = texture(Texture4, uv);
 			if (!show_grid) return face_sample;
-			return mix(face_sample, face_sample * vec4(color_top, 1.0) * grid_sample, alpha);
+			return mix(face_sample, face_sample * face_color * grid_sample, grid_alpha);
 	}
 	
 	return vec4(0);
