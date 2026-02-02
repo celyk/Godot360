@@ -301,8 +301,13 @@ mat3 get_face_tangent_basis(int face) {
 	}
 	
 	tbn[1] = cross(tbn[2], tbn[0]);
+	tbn[1] = -cross(tbn[2], tbn[0]);
 	
 	return tbn;
+}
+
+float fov_to_face_scale(float fov_degrees) {
+	return tan(radians(fov_degrees) / 2.0);
 }
 
 vec2 get_face_uv(vec3 dir, int face) {
@@ -310,7 +315,7 @@ vec2 get_face_uv(vec3 dir, int face) {
 	float ay = abs(dir.y);
 	float az = abs(dir.z);
 	
-	float fov_fix = 1.0 / tan(radians(subcamera_fov / 2.0));
+	float fov_fix = 1.0 / fov_to_face_scale(subcamera_fov);
 	
 	switch(face){
 		case FRONT:
@@ -396,21 +401,24 @@ vec4 sample_cube_face(int face, vec2 uv) {
 	return vec4(0);
 }
 
-vec4 sample_cube_face_with_blending(int face, vec2 uv) {
-	int x_face = get_face(get_face_tangent_basis(face)[0]);
-	int y_face = get_face(get_face_tangent_basis(face)[1]);
+vec4 sample_cube_face_with_blending(int face, vec2 uv, vec3 dir) {
+	vec2 s = sign(uv - 0.5);
 	
-	vec3 blend_factors = edge_blend_factors(uv, 0.5);
+	int x_face = get_face(s.x * get_face_tangent_basis(face)[0]);
+	int y_face = get_face(s.y * get_face_tangent_basis(face)[1]);
+	
+	vec3 blend_factors = edge_blend_factors(uv, 0.4);
 	
 	vec4 main_face_sample = sample_cube_face(face, uv);
-	vec4 x_face_sample = sample_cube_face(x_face, uv);
-	vec4 y_face_sample = sample_cube_face(y_face, uv);
+	vec4 x_face_sample = sample_cube_face(x_face, get_face_uv(dir, x_face));
+	vec4 y_face_sample = sample_cube_face(y_face, get_face_uv(dir, y_face));
 	
+	//return x_face_sample
 	return main_face_sample * blend_factors.x 
 			+ x_face_sample * blend_factors.y 
 			+ y_face_sample * blend_factors.z;
 	
-	return sample_cube_face(face, uv) * edge_blend_factors(uv, 0.5).x;
+	//return sample_cube_face(face, uv) * edge_blend_factors(uv, 1.0).x;
 }
 
 vec4 sample_cube(vec3 dir, int exclude_face) {
@@ -418,7 +426,7 @@ vec4 sample_cube(vec3 dir, int exclude_face) {
 	vec2 uv = get_face_uv(dir, face);
 	
 	if (feather_edges) {
-		return sample_cube_face_with_blending(face, uv);
+		return sample_cube_face_with_blending(face, uv, dir);
 	}
 	else {
 		return sample_cube_face(face, uv);
