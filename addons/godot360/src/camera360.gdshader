@@ -214,15 +214,20 @@ vec3 edge_blend_factors(vec2 uv, float width) {
 	vec3 q = vec3(max(uv.x, uv.y), uv.x, uv.y);
 	
 	// Remap, smooth and clamp the blend factors.
-	q = smoothstep(1.0 - width, 1.0, q);
+	//q = smoothstep(1.0 - width, 1.0, q);
+	q = q - (1.0 - width);
+	q /= width;
+	q = clamp(q, 0.0, 1.0);
 	
 	q.x = 1.0 - q.x;
+	
+	// We only want to blend half way. The other half belongs to the neighbouring faces.
+	q = mix(vec3(0.5, 0.0, 0.0), vec3(1.0, 0.5, 0.5), q);
 	
 	// Ensure that each face blends evenly.
 	q /= q.x + q.y + q.z;
 	
-	// We only want to blend half way. The other half belongs to the neighbouring faces.
-	q = mix(vec3(0.5, 0.0, 0.0), vec3(1.0, 0.5, 0.5), q);
+	//q = smoothstep(0.0, 1.0, q);
 	
 	return q;
 }
@@ -273,34 +278,33 @@ mat3 get_face_tangent_basis(int face) {
 	
 	switch(face) {
 		case FRONT:
-			tbn[2] = vec3(0,0,-1);
+			tbn[2] = vec3(0,0,1);
 			tbn[0] = vec3(1,0,0);
 			//return vec2(fov_fix * 0.5 * (vec2(dir.x / az, dir.y / az)) + 0.5)
-		case BACK: 
-			tbn[2] = vec3(0,0,1);
+		case BACK:
+			tbn[2] = vec3(0,0,-1);
 			tbn[0] = vec3(-1,0,0);
 			//return vec2(fov_fix * 0.5 * (vec2(-dir.x / az, dir.y / az)) + 0.5)
-		case LEFT: 
-			tbn[2] = vec3(-1,0,0);
+		case LEFT:
+			tbn[2] = vec3(1,0,0);
 			tbn[0] = vec3(0,0,-1);
 			//return vec2(fov_fix * 0.5 * (vec2(-dir.z / ax, dir.y / ax)) + 0.5)
 		case RIGHT: 
-			tbn[2] = vec3(1,0,0);
+			tbn[2] = vec3(-1,0,0);
 			tbn[0] = vec3(0,0,1);
 			//return vec2(fov_fix * 0.5 * (vec2(dir.z / ax, dir.y / ax)) + 0.5)
 		case BOTTOM: 
-			tbn[2] = vec3(0,-1,0);
+			tbn[2] = vec3(0,1,0);
 			tbn[0] = vec3(1,0,0);
 			//return vec2(fov_fix * 0.5 * (vec2(dir.x / ay, dir.z / ay)) + 0.5);
 		case TOP: 
-			tbn[2] = vec3(0,1,0);
+			tbn[2] = vec3(0,-1,0);
 			tbn[0] = vec3(1,0,0);
 			//return vec2(fov_fix * 0.5 * (vec2(dir.x / ay, -dir.z / ay)) + 0.5);
 		default:
 			break;
 	}
 	
-	tbn[1] = cross(tbn[2], tbn[0]);
 	tbn[1] = -cross(tbn[2], tbn[0]);
 	
 	return tbn;
@@ -315,7 +319,8 @@ vec2 get_face_uv(vec3 dir, int face) {
 	float ay = abs(dir.y);
 	float az = abs(dir.z);
 	
-	float fov_fix = 1.0 / fov_to_face_scale(subcamera_fov);
+	float face_scale = fov_to_face_scale(subcamera_fov);
+	float fov_fix = 1.0 / face_scale;
 	
 	switch(face){
 		case FRONT:
@@ -345,6 +350,8 @@ vec4 get_face_color(int face) {
 	vec3 color_bottom = vec3(0.0, 1.0, 0.0);
 	vec3 color_top = vec3(0.0, 0.0, 1.0);
 	
+	//return vec4(1) * (sin(float(face) * vec4(3,4,5,1) + TIME) * 0.5 + 0.5);
+	
 	switch(face){
 		case FRONT:
 			return vec4(color_front, 1.0);
@@ -369,29 +376,37 @@ vec4 sample_cube_face(int face, vec2 uv) {
 	vec4 grid_sample = texture(Grid, uv);
 	float grid_alpha = 0.3;
 	
+	//return face_color;
+	
 	switch(face){
 		case FRONT:
 			vec4 face_sample = texture(Texture0, uv);
+			face_sample.rgb = srgb_to_linear(face_sample.rgb);
 			if (!show_grid) return face_sample;
 			return mix(face_sample, face_sample * face_color * grid_sample, grid_alpha);
 		case BACK: 
 			vec4 face_sample = texture(Texture5, uv);
+			face_sample.rgb = srgb_to_linear(face_sample.rgb);
 			if (!show_grid) return face_sample;
 			return mix(face_sample, face_sample * face_color * grid_sample, grid_alpha);
 		case LEFT:
 			vec4 face_sample = texture(Texture1, uv);
+			face_sample.rgb = srgb_to_linear(face_sample.rgb);
 			if (!show_grid) return face_sample;
 			return mix(face_sample, face_sample * face_color * grid_sample, grid_alpha);
 		case RIGHT:
 			vec4 face_sample = texture(Texture2, uv);
+			face_sample.rgb = srgb_to_linear(face_sample.rgb);
 			if (!show_grid) return face_sample;
 			return mix(face_sample, face_sample * face_color * grid_sample, grid_alpha);
 		case BOTTOM:
 			vec4 face_sample = texture(Texture3, uv);
+			face_sample.rgb = srgb_to_linear(face_sample.rgb);
 			if (!show_grid) return face_sample;
 			return mix(face_sample, face_sample * face_color * grid_sample, grid_alpha);
 		case TOP: 
 			vec4 face_sample = texture(Texture4, uv);
+			face_sample.rgb = srgb_to_linear(face_sample.rgb);
 			if (!show_grid) return face_sample;
 			return mix(face_sample, face_sample * face_color * grid_sample, grid_alpha);
 		default:
@@ -401,21 +416,77 @@ vec4 sample_cube_face(int face, vec2 uv) {
 	return vec4(0);
 }
 
+int get_opposite_face(int face) {
+	switch (face) {
+		case FRONT: return BACK;
+		case BACK: return FRONT;
+		case LEFT: return RIGHT;
+		case RIGHT: return LEFT;
+		case BOTTOM: return TOP;
+		case TOP: return BOTTOM;
+		default:
+			break;
+	}
+	
+	return -1;
+}
+
 vec4 sample_cube_face_with_blending(int face, vec2 uv, vec3 dir) {
 	vec2 s = sign(uv - 0.5);
 	
 	int x_face = get_face(s.x * get_face_tangent_basis(face)[0]);
 	int y_face = get_face(s.y * get_face_tangent_basis(face)[1]);
 	
-	vec3 blend_factors = edge_blend_factors(uv, 0.4);
+	if (face == FRONT) {
+		x_face = RIGHT;
+		y_face = BOTTOM;
+	}
+	if (face == BACK) {
+		x_face = LEFT;
+		y_face = BOTTOM;
+	}
+	if (face == LEFT) {
+		x_face = FRONT;
+		y_face = BOTTOM;
+	}
+	if (face == RIGHT) {
+		x_face = BACK;
+		y_face = BOTTOM;
+	}
+	if (face == BOTTOM) {
+		x_face = RIGHT;
+		y_face = BACK;
+	}
+	if (face == TOP) {
+		x_face = RIGHT;
+		y_face = FRONT;
+	}
+	
+	if (s.x < 0.0) {
+		x_face = get_opposite_face(x_face);
+	}
+	if (s.y < 0.0) {
+		y_face = get_opposite_face(y_face);
+	}
+	
+	float face_scale = fov_to_face_scale(subcamera_fov);
+	float blend_width = face_scale - 1.0;
+	vec3 blend_factors = edge_blend_factors((uv - 0.5) * face_scale + 0.5, blend_width * 0.5);
 	
 	vec4 main_face_sample = sample_cube_face(face, uv);
 	vec4 x_face_sample = sample_cube_face(x_face, get_face_uv(dir, x_face));
 	vec4 y_face_sample = sample_cube_face(y_face, get_face_uv(dir, y_face));
 	
-	//return x_face_sample
+	//if (max(abs(uv-0.5).x,abs(uv-0.5).y) > 0.5) return vec4(0);
+	
+	if (face == FRONT && sin(TIME) < 0.0){
+		//return x_face_sample;
+	}
+	
+	//return vec4(blend_factors.x);
+	
 	return main_face_sample * blend_factors.x 
-			+ x_face_sample * blend_factors.y 
+			+ x_face_sample * blend_factors.y
 			+ y_face_sample * blend_factors.z;
 	
 	//return sample_cube_face(face, uv) * edge_blend_factors(uv, 1.0).x;
@@ -439,7 +510,7 @@ void fragment() {
 	vec2 uv = FRAGCOORD.xy / min(VIEWPORT_SIZE.x, VIEWPORT_SIZE.y);
 	vec3 dir = get_ray_direction(uv, VIEWPORT_SIZE);
 	
-	ALBEDO = srgb_to_linear(sample_cube(dir, -1).rgb);
+	ALBEDO = sample_cube(dir, -1).rgb;
 	
 	if (debug) {
 		int face = get_face(dir);
