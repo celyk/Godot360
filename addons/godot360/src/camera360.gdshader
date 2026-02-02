@@ -194,11 +194,11 @@ void vertex() {
 
 //enum CubeFace{FRONT, BACK, LEFT, RIGHT, BOTTOM, TOP}
 const int FRONT = 0;
-const int BACK = 5;
-const int LEFT = 1;
-const int RIGHT = 2;
-const int BOTTOM = 3;
-const int TOP = 4;
+const int BACK = 1;
+const int LEFT = 2;
+const int RIGHT = 3;
+const int BOTTOM = 4;
+const int TOP = 5;
 
 // Computes the blend factors for a face given base UV coordinates.
 // Equivalent to trilinear interpolation around the corners.
