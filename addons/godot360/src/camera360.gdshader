@@ -3,6 +3,7 @@ render_mode unshaded, cull_front;
 
 uniform float subcamera_fov = 100.0;
 uniform float fovx = 90.0;
+uniform bool feather_edges = true;
 
 uniform int lens = 0;
 uniform vec2 camera_resolution = vec2(512.0, 512.0);
@@ -191,9 +192,17 @@ void vertex() {
 	POSITION = vec4(VERTEX.xy, 1.0, 1.0);
 }
 
+//enum CubeFace{FRONT, BACK, LEFT, RIGHT, BOTTOM, TOP}
+const int FRONT = 0;
+const int BACK = 5;
+const int LEFT = 1;
+const int RIGHT = 2;
+const int BOTTOM = 3;
+const int TOP = 4;
+
 // Computes the blend factors for a face given base UV coordinates.
 // Equivalent to trilinear interpolation around the corners.
-// Undefined for width <= 0
+// Undefined for width <= 0.
 vec3 edge_blend_factors(vec2 uv, float width) {
 	uv = uv * 2.0 - 1.0;
 	uv = abs(uv);
@@ -235,25 +244,52 @@ int get_face(vec3 dir) {
 		
 	if (az >= ax && az >= ay) {
 		if (dir.z < 0.0) {
-			return 0;
+			return FRONT;
 		} else {
-			return 5;
+			return BACK;
 		}
 	} else if (ax >= ay && ax >= az) {
 		if (dir.x < 0.0) {
-			return 1;
+			return LEFT;
 		} else {
-			return 2;
+			return RIGHT;
 		}
 	} else if (ay >= ax && ay >= az) {
 		if (dir.y > 0.0) {
-			return 3;
+			return BOTTOM;
 		} else {
-			return 4;
+			return TOP;
 		}
 	}
 	
 	return -1;
+}
+
+mat3 get_tangent_basis(int face) {
+	mat3 tbn = mat3(1);
+	
+	switch(face){
+		case FRONT:
+			tbn[0] = vec3(0);
+			//return vec2(fov_fix * 0.5 * (vec2(dir.x / az, dir.y / az)) + 0.5)
+		case BACK: 
+			tbn[0] = vec3(0);
+			//return vec2(fov_fix * 0.5 * (vec2(-dir.x / az, dir.y / az)) + 0.5)
+		case LEFT: 
+			tbn[0] = vec3(0);
+			//return vec2(fov_fix * 0.5 * (vec2(-dir.z / ax, dir.y / ax)) + 0.5)
+		case RIGHT: 
+			tbn[0] = vec3(0);
+			//return vec2(fov_fix * 0.5 * (vec2(dir.z / ax, dir.y / ax)) + 0.5)
+		case BOTTOM: 
+			tbn[0] = vec3(0);
+			//return vec2(fov_fix * 0.5 * (vec2(dir.x / ay, dir.z / ay)) + 0.5);
+		case TOP: 
+			tbn[0] = vec3(0);//return vec2(fov_fix * 0.5 * (vec2(dir.x / ay, -dir.z / ay)) + 0.5);
+	}
+	
+	return tbn;
+	return tbn;
 }
 
 vec2 get_face_uv(vec3 dir, int face) {
@@ -264,18 +300,18 @@ vec2 get_face_uv(vec3 dir, int face) {
 	float fov_fix = 1.0 / tan(radians(subcamera_fov / 2.0));
 	
 	switch(face){
-		case 0: 
+		case FRONT: 
 			return vec2(fov_fix * 0.5 * (vec2(dir.x / az, dir.y / az)) + 0.5);
-		case 1: 
-			return vec2(fov_fix * 0.5 * (vec2(-dir.z / ax, dir.y / ax)) + 0.5);
-		case 2: 
-			return vec2(fov_fix * 0.5 * (vec2(dir.z / ax, dir.y / ax)) + 0.5);
-		case 3: 
-			return vec2(fov_fix * 0.5 * (vec2(dir.x / ay, dir.z / ay)) + 0.5);
-		case 4: 
-			return vec2(fov_fix * 0.5 * (vec2(dir.x / ay, -dir.z / ay)) + 0.5);
-		case 5: 
+		case BACK: 
 			return vec2(fov_fix * 0.5 * (vec2(-dir.x / az, dir.y / az)) + 0.5);
+		case LEFT: 
+			return vec2(fov_fix * 0.5 * (vec2(-dir.z / ax, dir.y / ax)) + 0.5);
+		case RIGHT: 
+			return vec2(fov_fix * 0.5 * (vec2(dir.z / ax, dir.y / ax)) + 0.5);
+		case BOTTOM: 
+			return vec2(fov_fix * 0.5 * (vec2(dir.x / ay, dir.z / ay)) + 0.5);
+		case TOP: 
+			return vec2(fov_fix * 0.5 * (vec2(dir.x / ay, -dir.z / ay)) + 0.5);
 	}
 	
 	return vec2(-1);
@@ -292,45 +328,57 @@ vec4 sample_cube_face(int face, vec2 uv) {
 	vec4 grid_sample = texture(Grid, uv);
 	
 	switch(face){
-		case 0:
+		case FRONT:
 			vec4 face_sample = texture(Texture0, uv);
 			if (!show_grid) return face_sample;
 			return mix(face_sample, face_sample * vec4(color_front, 1.0) * grid_sample, alpha);
-		case 1:
-			vec4 face_sample = texture(Texture1, uv);
-			if (!show_grid) return face_sample;
-			return mix(face_sample, face_sample * vec4(color_left, 1.0) * grid_sample, alpha);
-		case 2:
-			vec4 face_sample = texture(Texture2, uv);
-			if (!show_grid) return face_sample;
-			return mix(face_sample, face_sample * vec4(color_right, 1.0) * grid_sample, alpha);
-		case 3:
-			vec4 face_sample = texture(Texture3, uv);
-			if (!show_grid) return face_sample;
-			return mix(face_sample, face_sample * vec4(color_bottom, 1.0) * grid_sample, alpha);
-		case 4: 
-			vec4 face_sample = texture(Texture4, uv);
-			if (!show_grid) return face_sample;
-			return mix(face_sample, face_sample * vec4(color_top, 1.0) * grid_sample, alpha);
-		case 5: 
+		case BACK: 
 			vec4 face_sample = texture(Texture5, uv);
 			if (!show_grid) return face_sample;
 			return mix(face_sample, face_sample * vec4(color_back, 1.0) * grid_sample, alpha);
+		case LEFT:
+			vec4 face_sample = texture(Texture1, uv);
+			if (!show_grid) return face_sample;
+			return mix(face_sample, face_sample * vec4(color_left, 1.0) * grid_sample, alpha);
+		case RIGHT:
+			vec4 face_sample = texture(Texture2, uv);
+			if (!show_grid) return face_sample;
+			return mix(face_sample, face_sample * vec4(color_right, 1.0) * grid_sample, alpha);
+		case BOTTOM:
+			vec4 face_sample = texture(Texture3, uv);
+			if (!show_grid) return face_sample;
+			return mix(face_sample, face_sample * vec4(color_bottom, 1.0) * grid_sample, alpha);
+		case TOP: 
+			vec4 face_sample = texture(Texture4, uv);
+			if (!show_grid) return face_sample;
+			return mix(face_sample, face_sample * vec4(color_top, 1.0) * grid_sample, alpha);
 	}
 	
 	return vec4(0);
 }
 
-vec4 sample_cube(vec3 dir, int exclude_face) {
+vec4 sample_cube_face_with_blending(int face, vec2 uv) {
+	int x_face = face;
+	int y_face = face;
+	
 	/*
 	for (int i = 0; i < 6; i++) {
 		
 	}*/
 	
+	return sample_cube_face(face, uv) * edge_blend_factors(uv, 0.5).x;
+}
+
+vec4 sample_cube(vec3 dir, int exclude_face) {
 	int face = get_face(dir);
 	vec2 uv = get_face_uv(dir, face);
 	
-	return sample_cube_face(face, uv) * edge_blend_factors(uv, 0.4).x;
+	if (feather_edges) {
+		return sample_cube_face_with_blending(face, uv);
+	}
+	else {
+		return sample_cube_face(face, uv);
+	}
 }
 
 void fragment() {
