@@ -2,11 +2,11 @@ shader_type spatial;
 render_mode unshaded, cull_front;
 
 uniform float subcamera_fov = 100.0;
-uniform float fovx;
+uniform float fovx = 90.0;
 
-uniform int lens;
-uniform vec2 camera_resolution;
-uniform bool show_grid;
+uniform int lens = 0;
+uniform vec2 camera_resolution = vec2(512.0, 512.0);
+uniform bool show_grid = false;
 
 uniform sampler2D Grid;
 uniform sampler2D Texture0 : hint_default_black;
@@ -287,6 +287,7 @@ void fragment() {
 			ALBEDO = vec3(0.0, 0.0, 0.0);
 		}
 	}
+	
 	if (debug) {
 		ALBEDO = vec3(uv.x, uv.y, 0.0); // debug UV display
 		if (show_grid) {
