@@ -267,19 +267,41 @@ vec2 get_face_uv(vec3 dir, int face) {
 }
 
 vec4 texture_sample_cube_face(int face, vec2 uv) {
+	vec3 color_front = vec3(1.0, 1.0, 1.0);
+	vec3 color_back = vec3(1.0, 1.0, 0.0);
+	vec3 color_left = vec3(1.0, 0.0, 0.0);
+	vec3 color_right = vec3(1.0, 0.2, 0.0);
+	vec3 color_bottom = vec3(0.0, 1.0, 0.0);
+	vec3 color_top = vec3(0.0, 0.0, 1.0);
+	float alpha = 0.3;
+	vec4 grid_sample = texture(Grid, uv);
+	
 	switch(face){
-		case 0: 
-			return texture(Texture0, uv);
-		case 1: 
-			return texture(Texture1, uv);
-		case 2: 
-			return texture(Texture2, uv);
-		case 3: 
-			return texture(Texture3, uv);
+		case 0:
+			vec4 face_sample = texture(Texture0, uv);
+			if (!show_grid) return face_sample;
+			return mix(face_sample, face_sample * vec4(color_front, 1.0) * grid_sample, alpha);
+			
+		case 1:
+			vec4 face_sample = texture(Texture1, uv);
+			if (!show_grid) return face_sample;
+			return mix(face_sample, face_sample * vec4(color_left, 1.0) * grid_sample, alpha);
+		case 2:
+			vec4 face_sample = texture(Texture2, uv);
+			if (!show_grid) return face_sample;
+			return mix(face_sample, face_sample * vec4(color_right, 1.0) * grid_sample, alpha);
+		case 3:
+			vec4 face_sample = texture(Texture3, uv);
+			if (!show_grid) return face_sample;
+			return mix(face_sample, face_sample * vec4(color_bottom, 1.0) * grid_sample, alpha);
 		case 4: 
-			return texture(Texture4, uv);
+			vec4 face_sample = texture(Texture4, uv);
+			if (!show_grid) return face_sample;
+			return mix(face_sample, face_sample * vec4(color_top, 1.0) * grid_sample, alpha);
 		case 5: 
-			return texture(Texture5, uv);
+			vec4 face_sample = texture(Texture5, uv);
+			if (!show_grid) return face_sample;
+			return mix(face_sample, face_sample * vec4(color_back, 1.0) * grid_sample, alpha);
 	}
 	
 	return vec4(-1);
@@ -324,9 +346,9 @@ void fragment() {
 		//case 4:;
 		//default:;
 	//}
+	//
 	
-	//
-	//
+	
 	//if (dir == vec3(0.0, 0.0, 0.0)) {
 		//ALBEDO = dir;
 	//} else {
@@ -382,11 +404,11 @@ void fragment() {
 			//ALBEDO = vec3(0.0, 0.0, 0.0);
 		//}
 	//}
-	//
-	//if (debug) {
-		//ALBEDO = vec3(uv.x, uv.y, 0.0); // debug UV display
-		//if (show_grid) {
-			//ALBEDO = ALBEDO * texture(Grid, uv).rgb;
-		//}
-	//}
+	
+	if (debug) {
+		ALBEDO = vec3(uv.x, uv.y, 0.0); // debug UV display
+		if (show_grid) {
+			ALBEDO = ALBEDO * texture(Grid, uv).rgb;
+		}
+	}
 }
