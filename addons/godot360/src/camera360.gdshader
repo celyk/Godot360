@@ -213,6 +213,19 @@ vec3 edge_blend_factors(vec2 uv, float width) {
 	return q;
 }
 
+vec3 get_ray_direction(vec2 uv, vec2 resolution) {
+	float view_ratio = resolution.x / resolution.y;
+	vec3 dir = vec3(0.0, 0.0, 0.0);
+	
+	if (view_ratio > 1.0) {
+		dir = get_transformation(vec2(uv.x - 0.5 * view_ratio, uv.y - 0.5) * 1.0);
+	} else {
+		dir = get_transformation(vec2(uv.x - 0.5, uv.y - 0.5 * view_ratio) * 1.0);
+	}
+	
+	return dir;
+}
+
 int get_face(vec3 dir) {
 	float ax = abs(dir.x);
 	float ay = abs(dir.y);
@@ -281,7 +294,6 @@ vec4 texture_sample_cube_face(int face, vec2 uv) {
 			vec4 face_sample = texture(Texture0, uv);
 			if (!show_grid) return face_sample;
 			return mix(face_sample, face_sample * vec4(color_front, 1.0) * grid_sample, alpha);
-			
 		case 1:
 			vec4 face_sample = texture(Texture1, uv);
 			if (!show_grid) return face_sample;
@@ -304,108 +316,33 @@ vec4 texture_sample_cube_face(int face, vec2 uv) {
 			return mix(face_sample, face_sample * vec4(color_back, 1.0) * grid_sample, alpha);
 	}
 	
-	return vec4(-1);
+	return vec4(0);
 }
 
-vec4 sample_cube(vec3 dir, bool _show_grid) {
-	return vec4(0);
+vec4 sample_cube(vec3 dir, int exclude_face) {
+	/*
+	for (int i = 0; i < 6; i++) {
+		
+	}*/
+	
+	int face = get_face(dir);
+	vec2 uv = get_face_uv(dir, face);
+	
+	return texture_sample_cube_face(face, uv);
 }
 
 void fragment() {
 	bool debug = false;
 
-	vec3 color_front = vec3(1.0, 1.0, 1.0);
-	vec3 color_back = vec3(1.0, 1.0, 0.0);
-	vec3 color_left = vec3(1.0, 0.0, 0.0);
-	vec3 color_right = vec3(1.0, 0.2, 0.0);
-	vec3 color_bottom = vec3(0.0, 1.0, 0.0);
-	vec3 color_top = vec3(0.0, 0.0, 1.0);
-	float alpha = 0.5;
-
-	float view_ratio = VIEWPORT_SIZE.x / VIEWPORT_SIZE.y;
 	vec2 uv = FRAGCOORD.xy / min(VIEWPORT_SIZE.x, VIEWPORT_SIZE.y);
-	vec3 dir = vec3(0.0, 0.0, 0.0);
-	if (view_ratio > 1.0) {
-		dir = get_transformation(vec2(uv.x - 0.5 * view_ratio, uv.y - 0.5) * 1.0);
-	} else {
-		dir = get_transformation(vec2(uv.x - 0.5, uv.y - 0.5 * view_ratio) * 1.0);
-	}
+	vec3 dir = get_ray_direction(uv, VIEWPORT_SIZE);
 	
-	int face = get_face(dir);
-	uv = get_face_uv(dir, face);
-	
-	ALBEDO = srgb_to_linear(texture_sample_cube_face(face, uv).rgb);
-	
-	//switch (face) {
-		//case 0:
-			//uv = get_face_uv(dir, face);
-		//case 5:;
-		//case 1:;
-		//case 2:;
-		//case 3:;
-		//case 4:;
-		//default:;
-	//}
-	//
-	
-	
-	//if (dir == vec3(0.0, 0.0, 0.0)) {
-		//ALBEDO = dir;
-	//} else {
-		//float ax = abs(dir.x);
-		//float ay = abs(dir.y);
-		//float az = abs(dir.z);
-//
-		//float fov_fix = 1.0 / tan(radians(subcamera_fov / 2.0));
-		//if (az >= ax && az >= ay) {
-			//if (dir.z < 0.0) {
-				//uv = vec2(fov_fix * 0.5 * (vec2(dir.x / az, dir.y / az)) + 0.5);
-				//ALBEDO = srgb_to_linear(texture(Texture0, uv).rgb);
-				//if (show_grid) {
-					//ALBEDO = mix(ALBEDO, ALBEDO * (vec4(color_front, 1.0) * texture(Grid, uv)).rgb, alpha);
-				//}
-			//} else {
-				//uv = vec2(fov_fix * 0.5 * (vec2(-dir.x / az, dir.y / az)) + 0.5);
-				//ALBEDO = srgb_to_linear(texture(Texture5, uv).rgb);
-				//if (show_grid) {
-					//ALBEDO = mix(ALBEDO, ALBEDO * (vec4(color_back, 1.0) * texture(Grid, uv)).rgb, alpha);
-				//}
-			//}
-		//} else if (ax >= ay && ax >= az) {
-			//if (dir.x < 0.0) {
-				//uv = vec2(fov_fix * 0.5 * (vec2(-dir.z / ax, dir.y / ax)) + 0.5);
-				//ALBEDO = srgb_to_linear(texture(Texture1, uv).rgb);
-				//if (show_grid) {
-					//ALBEDO = mix(ALBEDO, ALBEDO * (vec4(color_left, 1.0) * texture(Grid, uv)).rgb, alpha);
-				//}
-			//} else {
-				//ALBEDO = color_right;
-				//uv = vec2(fov_fix * 0.5 * (vec2(dir.z / ax, dir.y / ax)) + 0.5);
-				//ALBEDO = srgb_to_linear(texture(Texture2, uv).rgb);
-				//if (show_grid) {
-					//ALBEDO = mix(ALBEDO, ALBEDO * (vec4(color_right, 1.0) * texture(Grid, uv)).rgb, alpha);
-				//}
-			//}
-		//} else if (ay >= ax && ay >= az) {
-			//if (dir.y > 0.0) {
-				//uv = vec2(fov_fix * 0.5 * (vec2(dir.x / ay, dir.z / ay)) + 0.5);
-				//ALBEDO = srgb_to_linear(texture(Texture3, uv).rgb);
-				//if (show_grid) {
-					//ALBEDO = mix(ALBEDO, ALBEDO * (vec4(color_bottom, 1.0) * texture(Grid, uv)).rgb, alpha);
-				//}
-			//} else {
-				//uv = vec2(fov_fix * 0.5 * (vec2(dir.x / ay, -dir.z / ay)) + 0.5);
-				//ALBEDO = srgb_to_linear(texture(Texture4, uv).rgb);
-				//if (show_grid) {
-					//ALBEDO = mix(ALBEDO, ALBEDO * (vec4(color_top, 1.0) * texture(Grid, uv)).rgb, alpha);
-				//}
-			//}
-		//} else {
-			//ALBEDO = vec3(0.0, 0.0, 0.0);
-		//}
-	//}
+	ALBEDO = srgb_to_linear(sample_cube(dir, -1).rgb);
 	
 	if (debug) {
+		int face = get_face(dir);
+		uv = get_face_uv(dir, face);
+		
 		ALBEDO = vec3(uv.x, uv.y, 0.0); // debug UV display
 		if (show_grid) {
 			ALBEDO = ALBEDO * texture(Grid, uv).rgb;
