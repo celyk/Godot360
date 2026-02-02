@@ -213,6 +213,63 @@ vec3 edge_blend_factors(vec2 uv, float width) {
 	return q;
 }
 
+int get_face(vec3 dir) {
+	float ax = abs(dir.x);
+	float ay = abs(dir.y);
+	float az = abs(dir.z);
+		
+	if (az >= ax && az >= ay) {
+		if (dir.z < 0.0) {
+			return 0;
+		} else {
+			return 5;
+		}
+	} else if (ax >= ay && ax >= az) {
+		if (dir.x < 0.0) {
+			return 1;
+		} else {
+			return 2;
+		}
+	} else if (ay >= ax && ay >= az) {
+		if (dir.y > 0.0) {
+			return 3;
+		} else {
+			return 4;
+		}
+	}
+	
+	return -1;
+}
+
+vec2 get_face_uv(vec3 dir, int face) {
+	float ax = abs(dir.x);
+	float ay = abs(dir.y);
+	float az = abs(dir.z);
+	
+	float fov_fix = 1.0 / tan(radians(subcamera_fov / 2.0));
+	
+	switch(face){
+		case 0: 
+			return vec2(fov_fix * 0.5 * (vec2(dir.x / az, dir.y / az)) + 0.5);
+		case 1: 
+			return vec2(fov_fix * 0.5 * (vec2(-dir.z / ax, dir.y / ax)) + 0.5);
+		case 2: 
+			return vec2(fov_fix * 0.5 * (vec2(dir.z / ax, dir.y / ax)) + 0.5);
+		case 3: 
+			return vec2(fov_fix * 0.5 * (vec2(dir.x / ay, dir.z / ay)) + 0.5);
+		case 4: 
+			return vec2(fov_fix * 0.5 * (vec2(dir.x / ay, -dir.z / ay)) + 0.5);
+		case 5: 
+			return vec2(fov_fix * 0.5 * (vec2(-dir.x / az, dir.y / az)) + 0.5);
+	}
+	
+	return vec2(-1);
+}
+
+vec4 sample_cube(vec3 dir, bool _show_grid) {
+	return vec4(0);
+}
+
 void fragment() {
 	bool debug = false;
 
