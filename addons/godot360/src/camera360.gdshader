@@ -199,10 +199,12 @@ vec3 edge_blend_factors(vec2 uv, float width) {
 	uv = abs(uv);
 	
 	// Blend factors.
-	vec3 q = vec3(1.0 - max(uv.x, uv.y), uv.x, uv.y);
+	vec3 q = vec3(max(uv.x, uv.y), uv.x, uv.y);
 	
 	// Remap, smooth and clamp the blend factors.
 	q = smoothstep(1.0 - width, 1.0, q);
+	
+	q.x = 1.0 - q.x;
 	
 	// Ensure that each face blends evenly.
 	q /= q.x + q.y + q.z;
@@ -279,7 +281,7 @@ vec2 get_face_uv(vec3 dir, int face) {
 	return vec2(-1);
 }
 
-vec4 texture_sample_cube_face(int face, vec2 uv) {
+vec4 sample_cube_face(int face, vec2 uv) {
 	vec3 color_front = vec3(1.0, 1.0, 1.0);
 	vec3 color_back = vec3(1.0, 1.0, 0.0);
 	vec3 color_left = vec3(1.0, 0.0, 0.0);
@@ -328,7 +330,7 @@ vec4 sample_cube(vec3 dir, int exclude_face) {
 	int face = get_face(dir);
 	vec2 uv = get_face_uv(dir, face);
 	
-	return texture_sample_cube_face(face, uv);
+	return sample_cube_face(face, uv) * edge_blend_factors(uv, 0.4).x;
 }
 
 void fragment() {
