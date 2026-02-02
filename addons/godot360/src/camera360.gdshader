@@ -191,6 +191,28 @@ void vertex() {
 	POSITION = vec4(VERTEX.xy, 1.0, 1.0);
 }
 
+// Computes the blend factors for a face given base UV coordinates.
+// Equivalent to trilinear interpolation around the corners.
+// Undefined for width <= 0
+vec3 edge_blend_factors(vec2 uv, float width) {
+	uv = uv * 2.0 - 1.0;
+	uv = abs(uv);
+	
+	// Blend factors.
+	vec3 q = vec3(1.0 - max(uv.x, uv.y), uv.x, uv.y);
+	
+	// Remap, smooth and clamp the blend factors.
+	q = smoothstep(1.0 - width, 1.0, q);
+	
+	// Ensure that each face blends evenly.
+	q /= q.x + q.y + q.z;
+	
+	// We only want to blend half way. The other half belongs to the neighbouring faces.
+	q = mix(vec3(0.5, 0.0, 0.0), vec3(1.0, 0.5, 0.5), q);
+	
+	return q;
+}
+
 void fragment() {
 	bool debug = false;
 
