@@ -27,6 +27,14 @@ uniform sampler2D Texture5 : hint_default_black;
 
 #include "projections.gdshaderinc"
 
+//enum CubeFace{FRONT, BACK, LEFT, RIGHT, BOTTOM, TOP}
+const int FRONT = 0;   // -Z
+const int BACK = 1;    // +Z
+const int LEFT = 2;    // -X
+const int RIGHT = 3;   // +X
+const int BOTTOM = 4;  // -Y
+const int TOP = 5;     // +Y
+
 vec3 get_transformation(vec2 uv) {
 	switch (lens) {
 		case 0: return(rectilinear_ray(uv));
@@ -40,21 +48,12 @@ vec3 get_transformation(vec2 uv) {
 	}
 }
 
-// @TODO: Is this needed? The source_color hint could be used instead
+// @TODO: Is this needed? The source_color hint could be used instead.
 vec3 srgb_to_linear(vec3 color) {
 	return color * (color * (color * 0.305306011 + 0.682171111) + 0.012522878);
 }
 
-//enum CubeFace{FRONT, BACK, LEFT, RIGHT, BOTTOM, TOP}
-const int FRONT = 0;   // -Z
-const int BACK = 1;    // +Z
-const int LEFT = 2;    // -X
-const int RIGHT = 3;   // +X
-const int BOTTOM = 4;  // -Y
-const int TOP = 5;     // +Y
-
 // Computes the blend factors for a face given base UV coordinates.
-// Equivalent to trilinear interpolation around the corners.
 // Undefined for width <= 0.
 vec3 edge_blend_factors(vec2 uv, float width) {
 	uv = uv * 2.0 - 1.0;
@@ -304,12 +303,6 @@ vec4 sample_cube_face_with_blending(int face, vec2 uv, vec3 dir) {
 	vec4 x_face_sample = sample_cube_face(x_face, get_face_uv(dir, x_face));
 	vec4 y_face_sample = sample_cube_face(y_face, get_face_uv(dir, y_face));
 	
-	//if (max(abs(uv-0.5).x,abs(uv-0.5).y) > 0.5) return vec4(0);
-	
-	if (face == FRONT && sin(TIME) < 0.0){
-		//return x_face_sample;
-	}
-	
 	return main_face_sample * blend_factors.x 
 			+ x_face_sample * blend_factors.y
 			+ y_face_sample * blend_factors.z;
@@ -340,6 +333,8 @@ void fragment() {
 	int face = get_face(dir);
 	uv = get_face_uv(dir, face);
 	
+	
+	// Debug options.
 	if (show_grid) {
 		ALBEDO = ALBEDO * texture(Grid, uv).rgb;
 	}
