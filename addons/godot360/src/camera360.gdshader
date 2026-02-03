@@ -1,5 +1,10 @@
 shader_type spatial;
 
+// Debug flags to help with development.
+//#define DEBUG_SHOW_WIREFRAME
+//#define DEBUG_SHOW_FACE_COLORS
+//#define DEBUG_SHOW_UV
+
 render_mode unshaded;
 render_mode cull_front;
 render_mode fog_disabled;
@@ -191,10 +196,6 @@ vec3 srgb_to_linear(vec3 color) {
 	return color * (color * (color * 0.305306011 + 0.682171111) + 0.012522878);
 }
 
-void vertex() {
-	POSITION = vec4(VERTEX.xy, 1.0, 1.0);
-}
-
 //enum CubeFace{FRONT, BACK, LEFT, RIGHT, BOTTOM, TOP}
 const int FRONT = 0;
 const int BACK = 1;
@@ -273,41 +274,101 @@ int get_face(vec3 dir) {
 	return -1;
 }
 
-mat3 get_face_tangent_basis(int face) {
-	mat3 tbn = mat3(1);
-	
-	switch(face) {
-		case FRONT:
-			tbn[2] = vec3(0,0,1);
-			tbn[0] = vec3(1,0,0);
-			//return vec2(fov_fix * 0.5 * (vec2(dir.x / az, dir.y / az)) + 0.5)
-		case BACK:
-			tbn[2] = vec3(0,0,-1);
-			tbn[0] = vec3(-1,0,0);
-			//return vec2(fov_fix * 0.5 * (vec2(-dir.x / az, dir.y / az)) + 0.5)
-		case LEFT:
-			tbn[2] = vec3(1,0,0);
-			tbn[0] = vec3(0,0,-1);
-			//return vec2(fov_fix * 0.5 * (vec2(-dir.z / ax, dir.y / ax)) + 0.5)
-		case RIGHT: 
-			tbn[2] = vec3(-1,0,0);
-			tbn[0] = vec3(0,0,1);
-			//return vec2(fov_fix * 0.5 * (vec2(dir.z / ax, dir.y / ax)) + 0.5)
-		case BOTTOM: 
-			tbn[2] = vec3(0,1,0);
-			tbn[0] = vec3(1,0,0);
-			//return vec2(fov_fix * 0.5 * (vec2(dir.x / ay, dir.z / ay)) + 0.5);
-		case TOP: 
-			tbn[2] = vec3(0,-1,0);
-			tbn[0] = vec3(1,0,0);
-			//return vec2(fov_fix * 0.5 * (vec2(dir.x / ay, -dir.z / ay)) + 0.5);
+int get_opposite_face(int face) {
+	switch (face) {
+		case FRONT: return BACK;
+		case BACK: return FRONT;
+		case LEFT: return RIGHT;
+		case RIGHT: return LEFT;
+		case BOTTOM: return TOP;
+		case TOP: return BOTTOM;
 		default:
 			break;
 	}
 	
-	tbn[1] = -cross(tbn[2], tbn[0]);
+	return -1;
+}
+
+//mat3 get_face_tangent_basis(int face) {
+	//mat3 tbn = mat3(1);
+	//
+	//switch(face) {
+		//case FRONT:
+			//tbn[2] = vec3(0,0,1);
+			//tbn[0] = vec3(1,0,0);
+			////return vec2(fov_fix * 0.5 * (vec2(dir.x / az, dir.y / az)) + 0.5)
+		//case BACK:
+			//tbn[2] = vec3(0,0,-1);
+			//tbn[0] = vec3(-1,0,0);
+			////return vec2(fov_fix * 0.5 * (vec2(-dir.x / az, dir.y / az)) + 0.5)
+		//case LEFT:
+			//tbn[2] = vec3(1,0,0);
+			//tbn[0] = vec3(0,0,-1);
+			////return vec2(fov_fix * 0.5 * (vec2(-dir.z / ax, dir.y / ax)) + 0.5)
+		//case RIGHT: 
+			//tbn[2] = vec3(-1,0,0);
+			//tbn[0] = vec3(0,0,1);
+			////return vec2(fov_fix * 0.5 * (vec2(dir.z / ax, dir.y / ax)) + 0.5)
+		//case BOTTOM: 
+			//tbn[2] = vec3(0,1,0);
+			//tbn[0] = vec3(1,0,0);
+			////return vec2(fov_fix * 0.5 * (vec2(dir.x / ay, dir.z / ay)) + 0.5);
+		//case TOP: 
+			//tbn[2] = vec3(0,-1,0);
+			//tbn[0] = vec3(1,0,0);
+			////return vec2(fov_fix * 0.5 * (vec2(dir.x / ay, -dir.z / ay)) + 0.5);
+		//default:
+			//break;
+	//}
+	//
+	//tbn[1] = -cross(tbn[2], tbn[0]);
+	//
+	//return tbn;
+//}
+
+int get_face_neighbour(int face, vec2 uv, bool other_face) {
+	vec2 s = sign(uv - 0.5);
 	
-	return tbn;
+	int x_face = -1;
+	int y_face = -1;
+	
+	if (face == FRONT) {
+		x_face = RIGHT;
+		y_face = BOTTOM;
+	}
+	if (face == BACK) {
+		x_face = LEFT;
+		y_face = BOTTOM;
+	}
+	if (face == LEFT) {
+		x_face = FRONT;
+		y_face = BOTTOM;
+	}
+	if (face == RIGHT) {
+		x_face = BACK;
+		y_face = BOTTOM;
+	}
+	if (face == BOTTOM) {
+		x_face = RIGHT;
+		y_face = BACK;
+	}
+	if (face == TOP) {
+		x_face = RIGHT;
+		y_face = FRONT;
+	}
+	
+	if (s.x < 0.0) {
+		x_face = get_opposite_face(x_face);
+	}
+	if (s.y < 0.0) {
+		y_face = get_opposite_face(y_face);
+	}
+	
+	if (other_face) {
+		return y_face;
+	}
+	
+	return x_face;
 }
 
 float fov_to_face_scale(float fov_degrees) {
@@ -368,44 +429,47 @@ vec4 get_face_color(int face) {
 		default:
 			break;
 	}
+	
 	return vec4(0);
 }
 
 vec4 sample_cube_face(int face, vec2 uv) {
 	vec4 face_color = get_face_color(face);
-	vec4 grid_sample = texture(Grid, uv);
+	vec4 grid_sample = textureLod(Grid, uv, 0.0);
 	float grid_alpha = 0.3;
-	
-	//return face_color;
+
+#ifdef DEBUG_SHOW_FACE_COLORS
+	return face_color;
+#endif
 	
 	switch(face){
 		case FRONT:
-			vec4 face_sample = texture(Texture0, uv);
+			vec4 face_sample = textureLod(Texture0, uv, 0.0);
 			face_sample.rgb = srgb_to_linear(face_sample.rgb);
 			if (!show_grid) return face_sample;
 			return mix(face_sample, face_sample * face_color * grid_sample, grid_alpha);
 		case BACK: 
-			vec4 face_sample = texture(Texture5, uv);
+			vec4 face_sample = textureLod(Texture5, uv, 0.0);
 			face_sample.rgb = srgb_to_linear(face_sample.rgb);
 			if (!show_grid) return face_sample;
 			return mix(face_sample, face_sample * face_color * grid_sample, grid_alpha);
 		case LEFT:
-			vec4 face_sample = texture(Texture1, uv);
+			vec4 face_sample = textureLod(Texture1, uv, 0.0);
 			face_sample.rgb = srgb_to_linear(face_sample.rgb);
 			if (!show_grid) return face_sample;
 			return mix(face_sample, face_sample * face_color * grid_sample, grid_alpha);
 		case RIGHT:
-			vec4 face_sample = texture(Texture2, uv);
+			vec4 face_sample = textureLod(Texture2, uv, 0.0);
 			face_sample.rgb = srgb_to_linear(face_sample.rgb);
 			if (!show_grid) return face_sample;
 			return mix(face_sample, face_sample * face_color * grid_sample, grid_alpha);
 		case BOTTOM:
-			vec4 face_sample = texture(Texture3, uv);
+			vec4 face_sample = textureLod(Texture3, uv, 0.0);
 			face_sample.rgb = srgb_to_linear(face_sample.rgb);
 			if (!show_grid) return face_sample;
 			return mix(face_sample, face_sample * face_color * grid_sample, grid_alpha);
 		case TOP: 
-			vec4 face_sample = texture(Texture4, uv);
+			vec4 face_sample = textureLod(Texture4, uv, 0.0);
 			face_sample.rgb = srgb_to_linear(face_sample.rgb);
 			if (!show_grid) return face_sample;
 			return mix(face_sample, face_sample * face_color * grid_sample, grid_alpha);
@@ -416,58 +480,9 @@ vec4 sample_cube_face(int face, vec2 uv) {
 	return vec4(0);
 }
 
-int get_opposite_face(int face) {
-	switch (face) {
-		case FRONT: return BACK;
-		case BACK: return FRONT;
-		case LEFT: return RIGHT;
-		case RIGHT: return LEFT;
-		case BOTTOM: return TOP;
-		case TOP: return BOTTOM;
-		default:
-			break;
-	}
-	
-	return -1;
-}
-
 vec4 sample_cube_face_with_blending(int face, vec2 uv, vec3 dir) {
-	vec2 s = sign(uv - 0.5);
-	
-	int x_face = get_face(s.x * get_face_tangent_basis(face)[0]);
-	int y_face = get_face(s.y * get_face_tangent_basis(face)[1]);
-	
-	if (face == FRONT) {
-		x_face = RIGHT;
-		y_face = BOTTOM;
-	}
-	if (face == BACK) {
-		x_face = LEFT;
-		y_face = BOTTOM;
-	}
-	if (face == LEFT) {
-		x_face = FRONT;
-		y_face = BOTTOM;
-	}
-	if (face == RIGHT) {
-		x_face = BACK;
-		y_face = BOTTOM;
-	}
-	if (face == BOTTOM) {
-		x_face = RIGHT;
-		y_face = BACK;
-	}
-	if (face == TOP) {
-		x_face = RIGHT;
-		y_face = FRONT;
-	}
-	
-	if (s.x < 0.0) {
-		x_face = get_opposite_face(x_face);
-	}
-	if (s.y < 0.0) {
-		y_face = get_opposite_face(y_face);
-	}
+	int x_face = get_face_neighbour(face, uv, false);
+	int y_face = get_face_neighbour(face, uv, true);
 	
 	float face_scale = fov_to_face_scale(subcamera_fov);
 	float blend_width = face_scale - 1.0;
@@ -483,13 +498,9 @@ vec4 sample_cube_face_with_blending(int face, vec2 uv, vec3 dir) {
 		//return x_face_sample;
 	}
 	
-	//return vec4(blend_factors.x);
-	
 	return main_face_sample * blend_factors.x 
 			+ x_face_sample * blend_factors.y
 			+ y_face_sample * blend_factors.z;
-	
-	//return sample_cube_face(face, uv) * edge_blend_factors(uv, 1.0).x;
 }
 
 vec4 sample_cube(vec3 dir, int exclude_face) {
@@ -504,21 +515,41 @@ vec4 sample_cube(vec3 dir, int exclude_face) {
 	}
 }
 
-void fragment() {
-	bool debug = false;
+void vertex() {
+	POSITION = vec4(VERTEX.xy, 1.0, 1.0);
+}
 
+void fragment() {
 	vec2 uv = FRAGCOORD.xy / min(VIEWPORT_SIZE.x, VIEWPORT_SIZE.y);
 	vec3 dir = get_ray_direction(uv, VIEWPORT_SIZE);
 	
 	ALBEDO = sample_cube(dir, -1).rgb;
 	
-	if (debug) {
-		int face = get_face(dir);
-		uv = get_face_uv(dir, face);
-		
-		ALBEDO = vec3(uv.x, uv.y, 0.0); // debug UV display
-		if (show_grid) {
-			ALBEDO = ALBEDO * texture(Grid, uv).rgb;
-		}
+	int face = get_face(dir);
+	uv = get_face_uv(dir, face);
+	
+	if (show_grid) {
+		ALBEDO = ALBEDO * texture(Grid, uv).rgb;
 	}
+	
+#ifdef DEBUG_SHOW_UV
+	ALBEDO = vec3(uv.x, uv.y, 0.0); // debug UV display
+#endif
+
+#ifdef DEBUG_SHOW_WIREFRAME
+	float face_scale = fov_to_face_scale(subcamera_fov);
+	float blend_width = face_scale - 1.0;
+	uv = (uv - 0.5) * face_scale;
+	uv = abs(uv);
+	
+	float d = 1e9;
+	
+	if (feather_edges){
+		d = abs(0.5 - blend_width * 0.25 - max(uv.x, uv.y));
+		ALBEDO = mix(vec3(0,1,0), ALBEDO, clamp(d / 0.005, 0.0, 1.0));
+	}
+	
+	d = abs(0.5 - max(uv.x, uv.y));
+	ALBEDO = mix(vec3(0,0,1), ALBEDO, clamp(d / 0.005, 0.0, 1.0));
+#endif
 }
