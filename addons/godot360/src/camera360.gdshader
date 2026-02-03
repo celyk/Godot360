@@ -40,17 +40,18 @@ vec3 get_transformation(vec2 uv) {
 	}
 }
 
+// @TODO: Is this needed? The source_color hint could be used instead
 vec3 srgb_to_linear(vec3 color) {
 	return color * (color * (color * 0.305306011 + 0.682171111) + 0.012522878);
 }
 
 //enum CubeFace{FRONT, BACK, LEFT, RIGHT, BOTTOM, TOP}
-const int FRONT = 0;
-const int BACK = 1;
-const int LEFT = 2;
-const int RIGHT = 3;
-const int BOTTOM = 4;
-const int TOP = 5;
+const int FRONT = 0;   // -Z
+const int BACK = 1;    // +Z
+const int LEFT = 2;    // -X
+const int RIGHT = 3;   // +X
+const int BOTTOM = 4;  // -Y
+const int TOP = 5;     // +Y
 
 // Computes the blend factors for a face given base UV coordinates.
 // Equivalent to trilinear interpolation around the corners.
@@ -136,43 +137,6 @@ int get_opposite_face(int face) {
 	
 	return -1;
 }
-
-//mat3 get_face_tangent_basis(int face) {
-	//mat3 tbn = mat3(1);
-	//
-	//switch(face) {
-		//case FRONT:
-			//tbn[2] = vec3(0,0,1);
-			//tbn[0] = vec3(1,0,0);
-			////return vec2(fov_fix * 0.5 * (vec2(dir.x / az, dir.y / az)) + 0.5)
-		//case BACK:
-			//tbn[2] = vec3(0,0,-1);
-			//tbn[0] = vec3(-1,0,0);
-			////return vec2(fov_fix * 0.5 * (vec2(-dir.x / az, dir.y / az)) + 0.5)
-		//case LEFT:
-			//tbn[2] = vec3(1,0,0);
-			//tbn[0] = vec3(0,0,-1);
-			////return vec2(fov_fix * 0.5 * (vec2(-dir.z / ax, dir.y / ax)) + 0.5)
-		//case RIGHT: 
-			//tbn[2] = vec3(-1,0,0);
-			//tbn[0] = vec3(0,0,1);
-			////return vec2(fov_fix * 0.5 * (vec2(dir.z / ax, dir.y / ax)) + 0.5)
-		//case BOTTOM: 
-			//tbn[2] = vec3(0,1,0);
-			//tbn[0] = vec3(1,0,0);
-			////return vec2(fov_fix * 0.5 * (vec2(dir.x / ay, dir.z / ay)) + 0.5);
-		//case TOP: 
-			//tbn[2] = vec3(0,-1,0);
-			//tbn[0] = vec3(1,0,0);
-			////return vec2(fov_fix * 0.5 * (vec2(dir.x / ay, -dir.z / ay)) + 0.5);
-		//default:
-			//break;
-	//}
-	//
-	//tbn[1] = -cross(tbn[2], tbn[0]);
-	//
-	//return tbn;
-//}
 
 int get_face_neighbour(int face, vec2 uv, bool other_face) {
 	vec2 s = sign(uv - 0.5);
@@ -394,10 +358,10 @@ void fragment() {
 	
 	if (feather_edges){
 		d = abs(0.5 - blend_width * 0.25 - max(uv.x, uv.y));
-		ALBEDO = mix(vec3(0,1,0), ALBEDO, clamp(d / 0.005, 0.0, 1.0));
+		ALBEDO = mix(vec3(0,0,1), ALBEDO, clamp(d / 0.005, 0.0, 1.0));
 	}
 	
 	d = abs(0.5 - max(uv.x, uv.y));
-	ALBEDO = mix(vec3(0,0,1), ALBEDO, clamp(d / 0.005, 0.0, 1.0));
+	ALBEDO = mix(vec3(0,1,0), ALBEDO, clamp(d / 0.005, 0.0, 1.0));
 #endif
 }
